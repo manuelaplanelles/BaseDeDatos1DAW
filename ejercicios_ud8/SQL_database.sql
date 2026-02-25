@@ -28,3 +28,15 @@ begin
 	group by ProductName
 end
 --EXC CUST_ORDER_HISTORY 'ANTON'
+
+--8.SALES_CUSTOMER_COUNTRY_YEAR. Write a SQL procedure to show a list of the customers and 
+--the total purchased of the customers from the country and year given as parameters. Spain, 1996
+
+create or alter procedure SALES_CUSTOMER_COUNTRY_YEAR @customerID as char(5)
+as
+begin
+	select
+	from
+	where
+	group by
+end
