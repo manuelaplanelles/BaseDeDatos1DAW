@@ -176,7 +176,7 @@ BEGIN
 	print ' NUM_ORDER    DATE    CLIENTE    TOTAL BILL'
 	print '============================================'
 
-	select @list=@list+space(4)+cast(ORDERS.order_id  as char)(7)+
+	select @list=@list+space(4)+cast(ORDERS.order_id  as char(7))+
 			cast(order_date as char(12))+
 			cast(fist_name+' '+last_name as char(20))+
 			cast(cast (sum (list_price*quantity*(1-discount)) as decimal(10,2))) as varchar)+char(10)
