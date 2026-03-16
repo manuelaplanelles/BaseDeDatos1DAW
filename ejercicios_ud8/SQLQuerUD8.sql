@@ -824,28 +824,35 @@ DEALLOCATE cursor_product
 -- 78. CUSTOMERS_TOTALORDERS_YEAR. Create a procedure to display all the customers and the total orders for every year.
 CREATE OR ALTER PROCEDURE CUSTOMERS_TOTALORDERS_YEAR
 AS BEGIN
-    DECLARE @customer VARCHAR(100)
+    DECLARE @customer VARCHAR(100), @customerID char(5)
+	declare @list varchar(max)=''
     DECLARE @year INT
     DECLARE @total MONEY
+
 	DECLARE cursor_orders CURSOR
-    FOR SELECT ContactName, Year(OrderDate), sum(UnitPrice*Quantity*(1- Discount))
-        FROM CUSTOMER, ORDERS, ORDER_DETAILS
-        WHERE CUSTOMER.CustomerID=ORDERS.CustomerID
-        AND ORDERS.OrderID=ORDER_DETAILS.OrderID
-        GROUP BY ContactName, YEAR(OrderDate)
-		ORDER BY ContactName, YEAR(OrderDate)
+    
+	FOR SELECT ContactName, CustomerID
+        FROM CUSTOMER
 
 		OPEN cursor_orders
-		FETCH NEXT FROM cursor_orders INTO @customer, @year, @total
+		FETCH NEXT FROM cursor_orders INTO @customer, @customerID
 
 		WHILE @@FETCH_STATUS = 0
 			BEGIN
-				PRINT 'CUSTOMER: ' + @customer + char(10) + 
-					'***********************************' + char(10) +
-					'Year'+space(10)+'Total'+char(10)+
-					'--------------------' + char(10)+
-					CAST(@year AS VARCHAR) + SPACE(10) + CAST(@total AS VARCHAR) + CHAR(10)
-				FETCH NEXT FROM cursor_orders INTO @customer, @year, @total
+				PRINT 'CUSTOMER: ' + @customer 
+				PRINT replicate ('*',30) 
+				PRINT 'Year'+space(10)+'Total'+char(10)
+				PRINT replicate ('-',20)
+				select @list=@list+cast(Year(OrderDate) as char(7)) + 
+					CAST(CAST(SUM(UnitPrice*Quantity*(1-Discount)) AS MONEY) AS CHAR(10))+char(10)
+				from ORDERS, ORDER_DETAILS
+				where ORDERS.OrderID=ORDER_DETAILS.OrderID
+					and ORDERS.CustomerID = @customerID
+				group by CustomerID, YEAR(OrderDate)
+				print @list
+				set @list=''
+				
+				FETCH NEXT FROM cursor_orders INTO @customer, @customerID
 
 			END
 		CLOSE cursor_orders
@@ -884,29 +891,55 @@ as begin
 end
 --exec ORDERS_CUSTOMER 'Chop-suey Chinese'
 SELECT * FROM CUSTOMER order by ContactName
+
+---create database WEST_END_MUSIC -----------------------------------------------------------------------------------------------------------------------
+-- 80. CUSTOMERS_BILLS_YEAR. Create a procedure to display the customers and their bills for the year given as a parameter. Here is
+-- the partial output for the year 2009:
+
+
+-- EXEC CUSTOMERS_BILLS_YEAR 2009
+
+--- create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
+-- 82.  AUTHOR_BOOKS. Create a procedure to display the authors and their albums. If there are no books for the author, the author will not be displayed.
+create or alter procedure AUTHOR_BOOKS
+as begin
+	declare @name varchar(50)
+	declare @id int
+	declare @list varchar(max)=''
+	declare @title varchar (80)
+	declare @publisher varchar(80)
+	declare @lenguage varchar (30)
+
+	declare cursor_author cursor 
+	for select Author_ID, Author_Name
+		from AUTHOR, BOOK_AUTHOR, BOOK
+		where AUTHOR.Author_ID=BOOK_AUTHOR
+
+end
+
 ---create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
 --83.CUSTOMER_METHODS. Create a procedure to display the customers who used the method given as parameter and spent more 
 -- money than the amount given as parameter.
 create or alter procedure CUSTOMER_METHODS (@method varchar(50), @morethan money)
 as begin
-	declare @name_customer varchar (100)
+	declare @name_customer varchar (100), @customerid int
 	declare @total money
 	declare cursor_methods cursor
-	for select concat(First_Name,Last_Name), sum(Price)
+	for select concat(First_Name,Last_Name), sum(Price), CUSTOMER.Customer_ID
 		from CUSTOMER, CUST_ORDER, ORDER_LINE, SHIPPING_METHOD
 		where CUSTOMER.Customer_ID = CUST_ORDER.Customer_ID
 			and	CUST_ORDER.Shipping_Method_ID = SHIPPING_METHOD.Method_ID
 			and CUST_ORDER.Order_ID = ORDER_LINE.Order_ID  
 			and Method_Name=@method
-		group by First_Name, Last_Name
-		having sum(Price) > @morethan
+		group by First_Name, Last_Name, CUSTOMER.Customer_ID
+		having sum(Price) >= @morethan
 		
 	open cursor_methods
-	fetch next from cursor_methods into @name_customer, @total
+	fetch next from cursor_methods into @name_customer, @total, @customerid
 	while @@FETCH_STATUS = 0
 		begin
 			print 'CUSTOMER: ' + @name_customer +space(15)+'TOTAL BILLS: ' + cast (@total as varchar)+'€'
-			fetch next from cursor_methods into @name_customer, @total
+			fetch next from cursor_methods into @name_customer, @total, @customerid
 		end
 	close cursor_methods
 	deallocate cursor_methods
@@ -915,5 +948,37 @@ end
 --EXEC CUSTOMER_METHODS 'INTERNATIONAL', 120
 --EXEC CUSTOMER_METHODS 'Express', 70
 
+--------------------------------------------------------------------------------------------------------------------------
+-- 84. COUNTRY_BOOKS. Create a procedure to display the authors and total books sold for the country and publisher given as parameter. Display the result-set order by years.
+create or alter procedure COUNTRY_BOOKS (@country varchar(50), @publis varchar(80)
+as begin
+	declare @autor varchar (50)
+	declare @year char(4)
+	declare @tSold
+	declare @list =''
+
+	declare cursor_year cursor
+	for select Country_Name
+		from COUNTRY
+
+	open cursor_year
+	fetch next from cursor_year into
+
+end
+
+-- EXEC COUNTRY_BOOKS 'Spain', 'Abacus'
+
 ---create database FILMS -----------------------------------------------------------------------------------------------------------------------
 --92. DIRECTOR_MOVIES. Create a procedure to display the director and the movies that they directed. Here is the partial output:
+create or alter procedure DIRECTOR_MOVIES
+as begin
+	declare @director varchar(30)
+	declare @movie varchar(50)
+	declare @year date
+	declare @language varchar(50)
+	declare cursor_director cursor
+	
+	for select 
+
+
+end
