@@ -887,7 +887,30 @@ SELECT * FROM CUSTOMER order by ContactName
 ---create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
 --83.CUSTOMER_METHODS. Create a procedure to display the customers who used the method given as parameter and spent more 
 -- money than the amount given as parameter.
-
+create or alter procedure CUSTOMER_METHODS (@method varchar(50), @morethan money)
+as begin
+	declare @name_customer varchar (100)
+	declare @total money
+	declare cursor_methods cursor
+	for select concat(First_Name,Last_Name), sum(Price)
+		from CUSTOMER, CUST_ORDER, ORDER_LINE, SHIPPING_METHOD
+		where CUSTOMER.Customer_ID = CUST_ORDER.Customer_ID
+			and	CUST_ORDER.Shipping_Method_ID = SHIPPING_METHOD.Method_ID
+			and CUST_ORDER.Order_ID = ORDER_LINE.Order_ID  
+			and Method_Name=@method
+		group by First_Name, Last_Name
+		having sum(Price) > @morethan
+		
+	open cursor_methods
+	fetch next from cursor_methods into @name_customer, @total
+	while @@FETCH_STATUS = 0
+		begin
+			print 'CUSTOMER: ' + @name_customer +space(15)+'TOTAL BILLS: ' + cast (@total as varchar)+'€'
+			fetch next from cursor_methods into @name_customer, @total
+		end
+	close cursor_methods
+	deallocate cursor_methods
+end
 
 --EXEC CUSTOMER_METHODS 'INTERNATIONAL', 120
 --EXEC CUSTOMER_METHODS 'Express', 70
