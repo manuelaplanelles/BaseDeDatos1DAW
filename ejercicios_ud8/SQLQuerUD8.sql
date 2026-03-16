@@ -884,6 +884,13 @@ as begin
 end
 --exec ORDERS_CUSTOMER 'Chop-suey Chinese'
 SELECT * FROM CUSTOMER order by ContactName
+---create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
+--83.CUSTOMER_METHODS. Create a procedure to display the customers who used the method given as parameter and spent more 
+-- money than the amount given as parameter.
 
---83.
---92.
+
+--EXEC CUSTOMER_METHODS 'INTERNATIONAL', 120
+--EXEC CUSTOMER_METHODS 'Express', 70
+
+---create database FILMS -----------------------------------------------------------------------------------------------------------------------
+--92. DIRECTOR_MOVIES. Create a procedure to display the director and the movies that they directed. Here is the partial output:
