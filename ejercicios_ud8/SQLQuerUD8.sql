@@ -898,6 +898,10 @@ SELECT * FROM CUSTOMER order by ContactName
 
 
 -- EXEC CUSTOMERS_BILLS_YEAR 2009
+--------------------------------------------------------------------------------------------------------------------------
+-- 81. ARTIST_ALBUMS. Create a procedure to display the artists and their albums. If there are no albums for the artist, the artist will not be displayed
+
+
 
 --- create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
 -- 82.  AUTHOR_BOOKS. Create a procedure to display the authors and their albums. If there are no books for the author, the author will not be displayed.
@@ -917,7 +921,7 @@ as begin
 
 end
 
----create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------
 --83.CUSTOMER_METHODS. Create a procedure to display the customers who used the method given as parameter and spent more 
 -- money than the amount given as parameter.
 create or alter procedure CUSTOMER_METHODS (@method varchar(50), @morethan money)
@@ -968,7 +972,118 @@ end
 
 -- EXEC COUNTRY_BOOKS 'Spain', 'Abacus'
 
+---create database MEDITECH -----------------------------------------------------------------------------------------------------------------------
+--85.ROOM_PATIENTS. Create a procedure to display the rooms and the patients that occupied them in the year given as parameter. 
+
+
+
+
+
+--EXEC ROOM_PATIENTS 2008
+
+--------------------------------------------------------------------------------------------------------------------------
+-- 86. HOSPITALIZED_PATIENTS. Create a procedure to display treatments given for every stay in the hospital.
+
+
+
+
+---create database ARMED_CONFLICTS  -----------------------------------------------------------------------------------------------------------------------
+--87. COUNTRY_CONFLICTS. Create a procedure to display the conflicts that every country were involved in. CORRECTO
+create or alter procedure COUNTRY_CONFLICTS
+as begin
+	declare @country varchar(30), @idCountry char(5)
+	declare @list varchar(max)=''
+
+	declare cursor_country cursor
+	for select NameCountry, CountryID
+		from COUNTRY
+
+	open cursor_country
+	fetch next from cursor_country into @country, @idCountry
+
+	while @@FETCH_STATUS = 0
+		begin
+			print replicate ('-', 50)
+			print 'CONUNTRY: ' + @country
+			print 'CONFLICT'+space(30)+'DATE STARTED'
+			print replicate ('-', 50)
+			select @list=@list +
+				CAST(NameConflict AS CHAR(40)) + 
+				CAST(DateStarted AS VARCHAR) + CHAR(10)
+
+			from CONFLICT, COUNTRY, COUNTRY_CONFLICT
+			where CONFLICT.ConflictID=COUNTRY_CONFLICT.ConflictID
+				and COUNTRY_CONFLICT.CountryID=COUNTRY.CountryID
+				and NameCountry= @country
+				and COUNTRY.CountryID =@idCountry
+			order by DateStarted
+			print @list
+			set @list=''
+
+			fetch next from cursor_country into @country, @idCountry
+		end
+
+		close cursor_country
+		deallocate cursor_country
+
+end
+--exec COUNTRY_CONFLICTS
+
+
+--------------------------------------------------------------------------------------------------------------------------
+-- 88. LIST_CONFLICTS. Create a procedure to display the conflicts and the type of conflict they were. Sort the result-set by the date when the conflicts started.
+create or alter procedure LIST_CONFLICTS
+as begin
+	declare @nameConflict varchar (30), @idConflict char(5)
+	declare @date date
+	declare @list_religion varchar(max),  @list_economic varchar(max), @list_territorial varchar(max), @list_racial varchar(max)
+
+	declare cursor_typeconflict cursor
+	for select NameConflict, DateStarted
+		from CONFLICT
+
+		open cursor_typeconflict
+		fetch next from cursor_typeconflict into @nameConglict, @idConflict
+		while @@FETCH_STATUS = 0
+			begin
+				print replicate ('-', 50)
+				print 'CONFLICT'+space(30)+'DATE STARTED'
+				print replicate ('-', 50) 
+				print CAST(@nameConflict AS CHAR(30)) + CAST(@date AS VARCHAR)
+				select Char(10)+ 
+				from CONFLICT, RACIAL, ECONOMIC, TERRITORIAL, RELIGIOUS
+				where CONFLICT.ConflictID=RACIAL.ConflictID
+					and CONFLICT.ConflictID=ECONOMIC.ConflictID
+					and CONFLICT.ConflictID=TERRITORIAL.ConflictID
+					and CONFLICT.ConflictID=RELIGIOUS.ConflictID
+
+			-- Select separado, uno por tipo
+			end
+
+end
+
+
+--------------------------------------------------------------------------------------------------------------------------
+-- 89. LIST_ORGANIZATIONS. Create a procedure to display the organizations and the conflicts they participated in. If the total of casualties 
+-- is higher than one million, ‘massive casualties’, if it is higher than one hundred thousand, ‘moderated casualties’, if it is lower than one 
+-- hundred thousand ‘limited casualties’
+
+
+
+
+
+
+
 ---create database FILMS -----------------------------------------------------------------------------------------------------------------------
+-- 90. ACTOR_FILMS. Create a procedure to display actor and the movies they work in. Here is the partial output:
+
+
+--------------------------------------------------------------------------------------------------------------------------
+-- 91. GENRES_MOVIES. Create a procedure to display the gender and the movies that belong to it. If there is not movies for a specific gender, 
+-- the gender will not be displayed. Here is the partial output:
+
+
+--------------------------------------------------------------------------------------------------------------------------
 --92. DIRECTOR_MOVIES. Create a procedure to display the director and the movies that they directed. Here is the partial output:
 create or alter procedure DIRECTOR_MOVIES
 as begin
