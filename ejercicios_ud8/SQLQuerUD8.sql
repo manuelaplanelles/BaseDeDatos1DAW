@@ -821,7 +821,7 @@ CLOSE cursor_product
 DEALLOCATE cursor_product
 
 ----EXPERT_LOGISTICS----------------------------------------------------------------------------------------------------------------------
--- 78. CUSTOMERS_TOTALORDERS_YEAR. Create a procedure to display all the customers and the total orders for every year.
+-- 78. CUSTOMERS_TOTALORDERS_YEAR. Create a procedure to display all the customers and the total orders for every year.				CORREGIDO
 CREATE OR ALTER PROCEDURE CUSTOMERS_TOTALORDERS_YEAR
 AS BEGIN
     DECLARE @customer VARCHAR(100), @customerID char(5)
@@ -889,8 +889,68 @@ as begin
 	close cursor_orders
 	deallocate cursor_orders
 end
+-- OTRA VERSION - PROFE
+create or alter procedure ORDERS_CUSTOMER @company varchar(40)
+as
+begin
+	declare @orderid int, @orderdate date, @total money
+	declare orders_cursor cursor
+	
+	for select ORDERS.orderid, orderdate, sum(unitprice*quantity*(1-discount))
+		from customer, orderS, Order_Details
+		where customer.customerid=orders.CustomerID and
+			CompanyName=@company and orders.OrderID=Order_Details.OrderID
+		group by orders.orderid, orderdate
+	print 'ORDERID DATE TOTAL'
+	print '-------------------------------'
+	
+	open orders_cursor
+	fetch next from orders_cursor into @orderid,@orderdate,@total
+	
+	while @@FETCH_STATUS = 0
+		begin
+			print cast(@orderid as char(8))+cast(@orderdate as char(12))+
+			cast(cast (@total as money) as char(10))
+			fetch next from orders_cursor into @orderid,@orderdate,@total
+		end
+	close orders_cursor
+	deallocate orders_cursor
+end
+-- OTRA VERSION - PROFE
+create or alter procedure ORDERS_CUSTOMER @company varchar(40)
+as
+begin
+	declare @id int
+	declare @list varchar(max)=''
+	declare orders_cursor cursor
+	
+	for select orderid
+		from orders, customer where orders.customerid=customer.customerid and
+			CompanyName like '%'+@company+'%'
+	
+	open orders_cursor
+	fetch next from orders_cursor into @id
+	
+	print 'ORDERID DATE TOTAL'
+	print '------------------------'
+	
+	while @@FETCH_STATUS=0
+		begin
+			select @list=cast(orders.orderid as char(7))+
+				cast(orderdate as char(10))+
+				cast(cast(sum(unitprice*quantity*(1-discount)) as money) as char(10))
+			from orders, ORDER_DETAILS
+			where orders.orderid=@id and orders.OrderID=ORDER_DETAILS.OrderID
+			group by orders.orderid, orderdate
+			
+			print @list
+			fetch next from orders_cursor into @id
+		end
+	close orders_cursor
+	deallocate orders_cursor
+end
 --exec ORDERS_CUSTOMER 'Chop-suey Chinese'
-SELECT * FROM CUSTOMER order by ContactName
+
 
 ---create database WEST_END_MUSIC -----------------------------------------------------------------------------------------------------------------------
 -- 80. CUSTOMERS_BILLS_YEAR. Create a procedure to display the customers and their bills for the year given as a parameter. Here is
@@ -905,21 +965,7 @@ SELECT * FROM CUSTOMER order by ContactName
 
 --- create database GRAVITY_STORE -----------------------------------------------------------------------------------------------------------------------
 -- 82.  AUTHOR_BOOKS. Create a procedure to display the authors and their albums. If there are no books for the author, the author will not be displayed.
-create or alter procedure AUTHOR_BOOKS
-as begin
-	declare @name varchar(50)
-	declare @id int
-	declare @list varchar(max)=''
-	declare @title varchar (80)
-	declare @publisher varchar(80)
-	declare @lenguage varchar (30)
 
-	declare cursor_author cursor 
-	for select Author_ID, Author_Name
-		from AUTHOR, BOOK_AUTHOR, BOOK
-		where AUTHOR.Author_ID=BOOK_AUTHOR
-
-end
 
 --------------------------------------------------------------------------------------------------------------------------
 --83.CUSTOMER_METHODS. Create a procedure to display the customers who used the method given as parameter and spent more 
@@ -942,7 +988,8 @@ as begin
 	fetch next from cursor_methods into @name_customer, @total, @customerid
 	while @@FETCH_STATUS = 0
 		begin
-			print 'CUSTOMER: ' + @name_customer +space(15)+'TOTAL BILLS: ' + cast (@total as varchar)+'€'
+			print 'CUSTOMER: ' + CAST(@name_customer AS CHAR(30)) + 
+				'TOTAL BILLS: ' + CAST(CAST(@total AS MONEY) AS varchar(10)) + '€'
 			fetch next from cursor_methods into @name_customer, @total, @customerid
 		end
 	close cursor_methods
@@ -988,7 +1035,7 @@ end
 
 
 ---create database ARMED_CONFLICTS  -----------------------------------------------------------------------------------------------------------------------
---87. COUNTRY_CONFLICTS. Create a procedure to display the conflicts that every country were involved in. CORRECTO
+--87. COUNTRY_CONFLICTS. Create a procedure to display the conflicts that every country were involved in.			CORRECTO
 create or alter procedure COUNTRY_CONFLICTS
 as begin
 	declare @country varchar(30), @idCountry char(5)
@@ -1031,52 +1078,169 @@ end
 
 
 --------------------------------------------------------------------------------------------------------------------------
--- 88. LIST_CONFLICTS. Create a procedure to display the conflicts and the type of conflict they were. Sort the result-set by the date when the conflicts started.
+-- 88. LIST_CONFLICTS. Create a procedure to display the conflicts and the type of conflict they were. Sort the result-set 
+-- by the date when the conflicts started.			INCOMPLETO -- DUDAS MANDADAS A VICKY
 create or alter procedure LIST_CONFLICTS
 as begin
-	declare @nameConflict varchar (30), @idConflict char(5)
+	declare @nameConflict varchar (30), @idConflict char(6)
 	declare @date date
 	declare @list_religion varchar(max),  @list_economic varchar(max), @list_territorial varchar(max), @list_racial varchar(max)
 
 	declare cursor_typeconflict cursor
-	for select NameConflict, DateStarted
+	for select ConflictID, NameConflict, DateStarted
 		from CONFLICT
+		order by DateStarted
 
 		open cursor_typeconflict
-		fetch next from cursor_typeconflict into @nameConglict, @idConflict
+		fetch next from cursor_typeconflict into @idConflict, @nameConflict, @date
 		while @@FETCH_STATUS = 0
 			begin
 				print replicate ('-', 50)
 				print 'CONFLICT'+space(30)+'DATE STARTED'
 				print replicate ('-', 50) 
 				print CAST(@nameConflict AS CHAR(30)) + CAST(@date AS VARCHAR)
-				select Char(10)+ 
-				from CONFLICT, RACIAL, ECONOMIC, TERRITORIAL, RELIGIOUS
-				where CONFLICT.ConflictID=RACIAL.ConflictID
-					and CONFLICT.ConflictID=ECONOMIC.ConflictID
-					and CONFLICT.ConflictID=TERRITORIAL.ConflictID
-					and CONFLICT.ConflictID=RELIGIOUS.ConflictID
+				print ''
 
-			-- Select separado, uno por tipo
+				select @list_religion = '    Religion: ' + 
+					STRING_AGG(Religion, CHAR(10) + SPACE(14))
+				from RELIGIOUS
+				where ConflictID = @idConflict
+
+				IF @list_religion IS NOT NULL
+				begin
+					print @list_religion
+					print ''
+					set @list_religion = NULL
+				end
+
+				select @list_economic = '    Economic: ' + 
+					STRING_AGG(Raw_Mat, CHAR(10) + SPACE(14))
+				from ECONOMIC
+				where ConflictID = @idConflict
+
+				if @list_economic IS NOT NULL
+				begin
+					print @list_economic
+					print ''
+					set @list_economic = NULL
+				end
+
+				select @list_territorial = '    Territorial: ' + 
+					STRING_AGG(Region, CHAR(10) + SPACE(17))
+				from TERRITORIAL
+				where ConflictID = @idConflict
+
+				if @list_territorial IS NOT NULL
+				begin
+					print @list_territorial
+					print ''
+					set @list_territorial = NULL
+				end
+
+				select @list_racial = '    Racial: ' + 
+					STRING_AGG(Etnic, CHAR(10) + SPACE(12))
+				from RACIAL
+				where ConflictID = @idConflict
+
+				if @list_racial IS NOT NULL
+				begin
+					print @list_racial
+					print ''
+					set @list_racial = NULL
+				end
+			
+			fetch next from cursor_typeconflict into @idConflict, @nameConflict, @date
 			end
-
+		
+    close cursor_typeconflict
+    deallocate cursor_typeconflict
 end
+
+-- exec LIST_CONFLICTS
 
 
 --------------------------------------------------------------------------------------------------------------------------
 -- 89. LIST_ORGANIZATIONS. Create a procedure to display the organizations and the conflicts they participated in. If the total of casualties 
 -- is higher than one million, ‘massive casualties’, if it is higher than one hundred thousand, ‘moderated casualties’, if it is lower than one 
--- hundred thousand ‘limited casualties’
+-- hundred thousand ‘limited casualties’														CORRECTO
+create or alter procedure LIST_ORGANIZATIONS
+as begin
+	declare @nameOrg varchar(60), @idOrg char(7)
+	declare @list varchar (max)=''
+	declare @deaths int
+	
 
+	declare cursor_organizations cursor
+	for select NameOrg, OrgID
+		from MEDIATION_ORG
 
+		open cursor_organizations
+		fetch next from cursor_organizations into @nameOrg, @idOrg
+		
+		while @@FETCH_STATUS=0
+			begin
+				print 'ORGANIZATION: '+ @nameOrg + CHAR(10) + 
+					replicate ('-', 50) + CHAR(10)
+				select @list = @list + 
+					'Conflict: ' + NameConflict +''+
+					CASE 
+						WHEN SUM(N_Deaths) > 1000000 THEN '(massive casualties)'
+						WHEN SUM(N_Deaths) > 100000 THEN '(moderated casualties)'
+						ELSE '(limited casualties)'
+					END + CHAR(10) +
+					'Type Assistance: ' + TypeAssistance + CHAR(10) + char(10)
 
+				from COUNTRY_CONFLICT, MED_ORG_CONFLICT, CONFLICT
+				where CONFLICT.ConflictID=COUNTRY_CONFLICT.ConflictID
+					and CONFLICT.ConflictID=MED_ORG_CONFLICT.ConflictID
+					and MED_ORG_CONFLICT.OrgID = @idOrg
+				group by NameConflict, TypeAssistance
+				order by NameConflict
+				
+				print @list
+				print replicate ('*', 50) 
 
+				fetch next from cursor_organizations into @nameOrg, @idOrg
+			end
 
-
+		close cursor_organizations
+		deallocate cursor_organizations
+end
+-- exec LIST_ORGANIZATIONS
 
 ---create database FILMS -----------------------------------------------------------------------------------------------------------------------
 -- 90. ACTOR_FILMS. Create a procedure to display actor and the movies they work in. Here is the partial output:
+create or alter procedure ACTOR_FILMS
+as begin
+	declare @actorid char(3)
+	declare @list varchar(max)=''
+	declare @nameActor varchar(20)
 
+	declare cursor_actorfilms cursor
+	for select NumActor, NameActor from ACTOR
+	
+
+	open cursor_actorfilms
+	fetch next from cursor_actorfilms into @actorid, @nameActor
+
+	while @@FETCH_STATUS=0
+		begin
+			print @nameActor
+			print replicate ('-',25)
+
+			select @list=@list + Title + char(10)
+			from MOVIE, MOVIE_CAST
+			where MOVIE_CAST.Movie_ID=MOVIE.Movie_Id
+				and NumActor=@actorid
+				
+			print @list
+			print ''
+			fetch next from cursor_actorfilms into @actorid, @nameActor
+		end
+	close cursor_actorfilms
+	deallocate cursor_actorfilms
+end
+-- exec ACTOR_FILMS
 
 --------------------------------------------------------------------------------------------------------------------------
 -- 91. GENRES_MOVIES. Create a procedure to display the gender and the movies that belong to it. If there is not movies for a specific gender, 
