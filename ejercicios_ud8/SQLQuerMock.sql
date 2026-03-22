@@ -45,35 +45,107 @@ end
 -- 2.
 create or alter procedure BILLS_MONTH (@month char(2), @year char(4))
 as begin
-	declare @orderID char(5)
-	declare @nameEmployee varchar(40)
-	declare @subtotal money
-	declare @vat money
-	declare @total money
+	declare @orderID char(5), @clientID char(10), @employId char(5), @orderDate date
+	declare @nameEmployee varchar(40), @nameClient varchar(80)
+	declare @subtotal money,@vat money,@total money
 	declare @list varchar(max)=''
 	
 	declare cursor_bills cursor
 
-	for select OrderID, OrderDate, NameEmployee, NameClient
-		from ORDERS, EMPLOYEE, CLIENT 
-		where ORDERS.EmployeeID=EMPLOYEE.EmployeeID
-			and ORDERS.OrderID=CLIENT.ClientID
-			and Year(OrderDate)=@year
-			and Month(OrderDate)=@month
-		
-			
+	for select OrderID, ClientID, OrderDate, EmployeeID
+		from ORDERS 
+		where Year(OrderDate)=@year and Month(OrderDate)=@month
+					
 		
 	open cursor_bills
-	fetch next from cursor_bills into 
+	fetch next from cursor_bills into @orderID, @clientID, @orderDate, @employId
 
 	while @@FETCH_STATUS=0
 		begin
-			
+			select @nameClient=NameClient
+			from CLIENT
+			where ClientID=@clientID
 
-			fetch next from cursor_bills into 
+			select @nameEmployee=NameEmployee
+			from EMPLOYEE
+			where EmployeeID=@employId
+
+			select @subtotal=sum(unitPrice*Quantity) 
+			from ORDER_DETAILS
+			where OrderID=@orderID
+			group by OrderID
+
+			set @vat = @subtotal*0.21
+			set @total = @subtotal+@vat
+
+			print replicate('*',50)
+			print 'Order: '+@orderID+space(15)+'Date: '+cast(@orderDate as char(12))
+			print 'Employee: '+ @nameEmployee
+			print 'Client: '+@nameClient
+			print 'PRODUCT'+space(12)+'CATEGORY'+space(5)+'QUANTITY'+space(5)+'PRICE'
+			print replicate('-',50)
+
+			select @list=@list + cast(NameProduct as char(18)) +
+				cast(Category as char(15)) + cast(ORDER_DETAILS.Quantity as char(2))+ space(4)+
+				cast(cast(sum(Price*ORDER_DETAILS.Quantity)as money)as char(10)) + char(10)
+			from PRODUCT,ORDER_DETAILS
+			where PRODUCT.ProductID=ORDER_DETAILS.ProductID
+				and ORDER_DETAILS.OrderID=@orderID
+			group by ORDER_DETAILS.Quantity, Price, Category, NameProduct
+			print @list
+
+			print space(27)+cast('Subtotal:'as char(12))+cast(cast(@subtotal as money) as char(10))
+			print space(27)+cast('VAT 21%:'as char(12))+cast(cast(@vat as money)as char(10))
+			print space(27)+cast('Total:'as char(12))+cast(cast(@total as money)as char(10))
+			set @list=''
+			
+			fetch next from cursor_bills into @orderID, @clientID, @orderDate, @employId
 		end
-	close cursor_bills
-	deallocate cursor_bills
+		close cursor_bills
+		deallocate cursor_bills
 
 end
 -- exec BILLS_MONTH 3 ,'2025' 
+
+--3. Create a procedure to display the products in stock for the category given as parameter.
+create or alter procedure PRODUCT_IN_STOCK @category varchar(11)
+as begin 
+	declare @productID char(10), @nameProduct varchar(50)
+	declare @price smallmoney
+	declare @list varchar(max)=''
+	
+	declare cursor_productstock cursor
+	for select ProductID, NameProduct, Price
+		from PRODUCT
+		where Category=@category
+			and Quantity>0
+			
+	
+	open cursor_productstock
+	fetch next from cursor_productstock into @productId, @nameProduct, @price
+
+	while @@FETCH_STATUS=0
+		begin
+			print @nameProduct+space(10)+cast(@price as char(10))+'€'
+			print 'COMPONENTS:'
+			select @list=@list+
+				space(2)+cast(NamePart as char(12))+space(10)+
+				cast(USE_PART.Quantity as char(3))+space(4)+
+				cast(cast(RetailPrice as money)as char(10))+'€'+char(10)
+			from PART, USE_PART
+			where USE_PART.PartID=PART.PartID
+				and USE_PART.ProductID=@productID
+
+			order by NamePart
+			print @list
+			set @list=''
+			print replicate('-', 50)
+
+			fetch next from cursor_productstock into @productId, @nameProduct, @price
+		end
+		close cursor_productstock
+		deallocate cursor_productstock
+end
+
+
+-- EXEC PRODUCT_IN_STOCK 'All-in-one' 'Workstation' 
