@@ -31,6 +31,8 @@ as begin
 		where GroupID=@groupID
 		group by NumDivision, N_ships, N_tanks, N_planes
 		
+		print @list
+		set @list = ''
 		select @totalShips = sum(N_ships),
 			   @totalThanks = sum(N_tanks),
 			   @totalPlanet = sum(N_planes)
@@ -41,9 +43,7 @@ as begin
 			  space(5) + cast(@totalThanks as varchar) + 
 			  space(5) + cast(@totalPlanet as varchar)				
 		print ''
-		
-		print @list
-		set @list = ''
+
 		fetch next from cursor_conflict into @nameGroup, @groupID, @casualties
 	end
 	close cursor_conflict
@@ -57,6 +57,7 @@ create or alter procedure COUNTRY_CONFLICTS
 as begin
 	declare @nameCountry varchar(30), @countryID char(5)
 	declare @list varchar(max)=''
+	declare @totalDeaths int, @totalInjuries int
 	
 	declare cursor_conflicts cursor
 	for select NameCountry, CountryID
@@ -75,10 +76,16 @@ as begin
 		from CONFLICT, COUNTRY_CONFLICT
 		where CONFLICT.ConflictID=COUNTRY_CONFLICT.ConflictID
 			and CountryID = @countryID
-
-
 		print @list
 		set @list = ''
+		select @totalDeaths = SUM(N_Deaths),
+			@totalInjuries = SUM(N_Injuries)
+		from COUNTRY_CONFLICT
+		where CountryID = @countryID
+
+		print 'Total deaths:    ' + cast(@totalDeaths as varchar)
+		print 'Total injuries:  ' + cast(@totalInjuries as varchar)
+		print ''
 		fetch next from cursor_conflicts into @nameCountry, @countryID
 	end
 	close cursor_conflicts
