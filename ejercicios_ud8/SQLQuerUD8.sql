@@ -1034,7 +1034,7 @@ end
 
 
 
----create database ARMED_CONFLICTS  -----------------------------------------------------------------------------------------------------------------------
+
 --87. COUNTRY_CONFLICTS. Create a procedure to display the conflicts that every country were involved in.			CORRECTO
 create or alter procedure COUNTRY_CONFLICTS
 as begin
