@@ -2,7 +2,29 @@
 
 --- ASSIGN_CABIN. Create a trigger that automatically assigns a cabin to a child when their data is inserted. 
 --Take into account the child's gender and ensure that the number of available spots for each cabin is not exceeded.
+create or alter trigger ASSIGN_CABIN
+on CHILD
+instead of INSERT
+as begin
+    declare @name varchar(30) = (select Name from inserted)
+    declare @gender char(1) = (select Gender from inserted)
+    declare @dbirth date = (select D_birth from inserted)
+    declare @parent1 tinyint = (select IdParent1 from inserted)
+    declare @parent2 tinyint = (select IdParent2 from inserted)
 
+    declare @cabin tinyint = (select top 1 Num 
+                              from CABIN 
+                              where Type = @gender 
+                                   and Num_spot > (select count(*) from CHILD where Num = CABIN.Num))
+
+    insert into CHILD (Name, Gender, D_birth, IdParent1, IdParent2, Num)
+    values (@name, @gender, @dbirth, @parent1, @parent2, @cabin)
+end
+
+-- insert into CHILD (Name, Gender, D_birth, IdParent1, IdParent2)
+-- values ('Test Girl4', 'F', '2010-01-01', 1, 2)
+
+-- SELECT * FROM CHILD
 
 
 --====================================================================================================================================
@@ -14,8 +36,39 @@
 ----- * A 50€ bonus will be added to each employee's salary for every activity they are assigned to.
 ----- * Check the coaches that do not have activities or are not in charge of a lot of activities and assigned them to be in charge 
 ------- of the cabins (update).
+create or alter trigger UPDATE_EMPLOYEE_ACTIVITY
+on ACTIVITY
+instead of INSERT
+as begin
+    declare @name varchar(25) = (select Name_activity from inserted)
+    declare @description varchar(60) = (select Description from inserted)
+    declare @days varchar(11) = (select Days_takes_place from inserted)
+    declare @slot varchar(11) = (select Time_slot from inserted)
+    declare @type varchar(12) = (select Type_activity from inserted)
+    declare @spots tinyint = (select Num_available_spot from inserted)
+    
+    declare @coach1 tinyint = (select top 1 Id from EMPLOYEE
+                                where Position = 'Coach'
+                                and Id not in (select IdEmployee1 from ACTIVITY where Days_takes_place = @days and Time_slot = @slot and IdEmployee1 is not null)
+                                and Id not in (select IdEmployee2 from ACTIVITY where Days_takes_place = @days and Time_slot = @slot and IdEmployee2 is not null)
+                                order by NEWID())
 
+    declare @coach2 tinyint = (select top 1 Id from EMPLOYEE
+                                where Position = 'Coach'
+                                and Id <> @coach1
+                                and Id not in (select IdEmployee1 from ACTIVITY where Days_takes_place = @days and Time_slot = @slot and IdEmployee1 is not null)
+                                and Id not in (select IdEmployee2 from ACTIVITY where Days_takes_place = @days and Time_slot = @slot and IdEmployee2 is not null)
+                                order by NEWID())
+    
+    insert into ACTIVITY (Name_activity, Description, Days_takes_place, Time_slot, Type_activity, Num_available_spot, IdEmployee1, IdEmployee2)
+    values (@name, @description, @days, @slot, @type, @spots, @coach1, @coach2)
 
+    update EMPLOYEE set Bonus_activity = Bonus_activity + 50 where Id = @coach1
+    update EMPLOYEE set Bonus_activity = Bonus_activity + 50 where Id = @coach2
+end
+
+--SELECT * FROM EMPLOYEE
+--SELECT * FROM ACTIVITY
 
 --====================================================================================================================================
 --- UPDATE_BONUS_TUTOR. Write a trigger to update the salary with the tutor bonus every time that a tutor is assigned to the tutor 
@@ -35,19 +88,18 @@ as begin
     end
 end
 
+--UPDATE CABIN SET IdEmployee = 3 WHERE Num = 9
+--UPDATE CABIN SET IdEmployee = 3 WHERE Num = 1
+--UPDATE CABIN SET IdEmployee = 9 WHERE Num = 3
+--UPDATE CABIN SET IdEmployee = 9 WHERE Num = 2
+--UPDATE CABIN SET IdEmployee = 10 WHERE Num = 4
+--UPDATE CABIN SET IdEmployee = 10 WHERE Num = 5
+--UPDATE CABIN SET IdEmployee = 4 WHERE Num = 6
+--UPDATE CABIN SET IdEmployee = 6 WHERE Num = 7
+--UPDATE CABIN SET IdEmployee = 8 WHERE Num = 8
 
-UPDATE CABIN SET IdEmployee = 3 WHERE Num = 9
-UPDATE CABIN SET IdEmployee = 3 WHERE Num = 1
-UPDATE CABIN SET IdEmployee = 9 WHERE Num = 3
-UPDATE CABIN SET IdEmployee = 9 WHERE Num = 2
-UPDATE CABIN SET IdEmployee = 10 WHERE Num = 4
-UPDATE CABIN SET IdEmployee = 10 WHERE Num = 5
-UPDATE CABIN SET IdEmployee = 4 WHERE Num = 6
-UPDATE CABIN SET IdEmployee = 6 WHERE Num = 7
-UPDATE CABIN SET IdEmployee = 8 WHERE Num = 8
-
-SELECT * FROM EMPLOYEE
-SELECT * FROM CABIN
+--SELECT * FROM EMPLOYEE
+--SELECT * FROM CABIN
 
 --====================================================================================================================================
 --- APPLY_ACTIVITY. Create a trigger that is fired each time a child signs up for an activity (insert). Take into account the 
@@ -96,13 +148,13 @@ as begin
         end
 
     --Asegúrate de que el niño no esté ya inscrito en 4 actividades
-    if @inscritos_child >= 4
+    if @inscritos_child >4
         begin
             print @name + ' already applied for 4 activities'
             rollback transaction
             return
         end
 end
-
--- insert into REGISTER values (1, 9)
--- insert into REGISTER values (3, 5)
+--SELECT * FROM ACTIVITY
+--SELECT * FROM CHILD
+--SELECT * FROM REGISTER
