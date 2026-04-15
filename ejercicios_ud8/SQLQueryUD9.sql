@@ -233,7 +233,14 @@ insert into Employee values ('García', 'Pepe', 'IT Staff', 6, '10/01/2000', GET
 'CV', 'Spain', '03007', '(+34)666454545', null, 'pepegarcia@gmail.com')
 
 select * from Employee
--------------------------------------------------------------------------------------------------------
+
+-- create database SCHOLARSHIP -----------------------------------------------------------------------------------------------------
+-- 22. TRIG_UPDATE_RANKS2. Write a trigger that update RANKING table. If a student renounces the scholarship (State is changed to 
+-- ‘dropout’), the ranking is updated.
+
+
+
+-- create database EXPERT_LOGISTICS -----------------------------------------------------------------------------------------------------
 -- 23. TRIG_INSERT_ORDERS_DETAILS. Write a trigger to do the following actions after a new insertion 
 -- in orders details:
 
@@ -241,6 +248,8 @@ select * from Employee
 -------------------------------------------------------------------------------------------------------
 -- 24. TRIG_SHIPPED_PRODUCTS. Write a trigger that update UnitsOnOrder when the shippedDate (orders) 
 -- is updated.
+
+
 -------------------------------------------------------------------------------------------------------
 -- 25. TRIG_UPDATE_SALARY. Write a trigger that gives a 200€ pay rise to an employee every time that 
 -- a new child is inserted in the dependents table.
