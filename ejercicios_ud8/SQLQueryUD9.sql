@@ -23,35 +23,122 @@ end
 insert into REGISTERED values(1, 'Tennis',0)
 -- select*from DEFAULTER
 
-----------------------------------The table DEFAULTER will be:
-create or alter trigger TRIG_INSERT
+-------------------------------------------------------------------------------------------------------
+-- 2. TRIG_UPDATE. Write a trigger to update the table DEFAULTER when the table REGISTERED is updated. 
+-- If a member paid for a particular sport, the member and the sport are deleted in DEFAULTER.
+create or alter trigger TRIG_UPDATE
 on REGISTERED
 after UPDATE
 as begin
-	declare @id int =(select IdMember from inserted)
-	declare @sport varchar(8)=(select sport from inserted)
-	declare @fee_old bit=(select Registration_fee from deleted)
-	declare @fee_new bit=(select Registration_fee from inserted)
+    declare @id int = (select IdMember from inserted)
+    declare @sport varchar(8) = (select Sport from inserted)
+    declare @free_old bit = (select Registration_fee from deleted)
+    declare @free_new bit = (select Registration_fee from inserted)
 
-	if @fee_old=0 and @fee_new=1
-	begin
-		delete
-		from DEFAULTER
-		where IdMember=@id and Sport=@sport
-	end
+    if @free_old = 0 and @free_new = 1
+        begin
+            delete from DEFAULTER
+                where IdMember = @id and Sport = @sport
+        end
 end
 
+select * from DEFAULTER
+select * from REGISTERED 
+
+insert into REGISTERED values (4, 'Football', 1)
+insert into REGISTERED values (3, 'Tennis', 0)
+insert into REGISTERED values (2, 'Football', 0)
+
 update REGISTERED
-set Registration_fee=1
+set Registration_fee = 1
 where IdMember = 1 and Sport = 'Tennis'
 
--- select * from DEFAULTER
--- select * from REGISTERED
+-- BICICLOS -----------------------------------------------------------------------------------------------------
+-- 3. TRIG_UPDATE_STOCK. Write a trigger to update the stock and the price of the product (in order_items) every 
+-- time there is an insert in the order_items table.
+create or alter trigger TRIG_UPDATE_STOCK
+on ORDER_ITEM
+after insert
+as begin
+    declare @product_id int = (select product_id from inserted)
+    declare @order_id int = (select order_id from inserted)
+    declare @quantity int = (select quantity from inserted)
+    declare @price money = (select list_price from PRODUCT where product_id = @product_id)
+
+    update STOCK
+    set quantity = quantity-@quantity
+    where product_id = @product_id
+
+    update ORDER_ITEM
+    set list_price = @price
+    where order_id = @order_id and product_id = @product_id
+end
+
+-- select * from STOCK where product_id = 1
+-- insert into ORDER_ITEM values (5, 5, 1, 7, 0, 0)
+
+-- create database SOCIAL-----------------------------------------------------------------------------------------------------
+-- 4. TRIG_DELETE. Write two triggers to maintain symmetry in friend relationships. Specifically, if (A,B) is deleted from 
+-- Friend, then (B,A) should be deleted too.
+create or alter trigger TRIG_DELETE
+on Friend
+after delete
+as begin
+    declare @id1 int = (select ID1 from deleted) 
+    declare @id2 int = (select ID2 from deleted)
+
+    delete from Friend
+        where ID1 = @id2 and ID2 = @id1
+end
+
+-- select * from Friend
+--delete from Friend where ID1 = 1 and ID2 = 2
 
 -------------------------------------------------------------------------------------------------------
--- 2.
+-- 5. TRIG_INSERT. If (A,B) is inserted into Friend then (B,A) should be inserted too. 
+-- (Do not worry about updates to the Friend table).
+create or alter trigger TRIG_INSERT
+on Friend
+after insert
+as begin
+    declare @id1 int = (select ID1 from inserted) 
+    declare @id2 int = (select ID2 from inserted)
+
+    insert into Friend values (@id2, @id1)
+end
+
+insert into Friend values (1, 2)
+-------------------------------------------------------------------------------------------------------
+-- 6. TRIG_GRADUATION. Write a trigger that automatically deletes students when they graduate 
+-- (when their grade is updated to exceed 12).
+create or alter trigger TRIG_GRADUATION
+on Highschooler
+after update
+as begin
+    declare @IdStudents int = (select id from inserted)
+    declare @grade int = (select Grade from inserted)
+
+    if @grade > 12
+     begin
+        delete from Friend where ID1 = @IdStudents or ID2 = @IdStudents
+        delete from Likes  where ID1 = @IdStudents or ID2 = @IdStudents
+        delete from Highschooler where ID = @IdStudents
+     end
+end
+select * from Highschooler
+update Highschooler
+set Grade = 13
+where ID = 1
+disable trigger TRIG_DELETE on Friend
+-------------------------------------------------------------------------------------------------------
+-- 7. TRIG_UPGRADE. Write a trigger so that when a student is moved up a grade, their friends will also be moved 
+-- (Upgrade the Coco, and Bertie, Rex, and Beatrix’s grades will be changed)
 
 -------------------------------------------------------------------------------------------------------
+-- 8. TRIG_NO_LONGER_FRIEND. Write a trigger to enforce the following behavior: If A liked B but is updated to 
+-- A liking C instead, and B and C were friends, make B and C no longer friends. Make sure the trigger only runs 
+-- when the "liked" (ID2) person is changed but the "liking" (ID1) person is not changed.
+
 -- create database CHAMPIONSHIP -----------------------------------------------------------------------
 -- 9. TRIG_RANKING. Write a trigger that checks if the home team won and give 3 points to it and 0 to 
 --the away team, if the away team won, give 3 points to it and 0 to the home team and if the two teams 
