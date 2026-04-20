@@ -19,7 +19,7 @@ as begin
 		values (@id,@sport)
 	end
 end
-
+--
 insert into REGISTERED values(1, 'Tennis',0)
 -- select*from DEFAULTER
 
@@ -41,7 +41,7 @@ as begin
                 where IdMember = @id and Sport = @sport
         end
 end
-
+--
 select * from DEFAULTER
 select * from REGISTERED 
 
@@ -73,7 +73,7 @@ as begin
     set list_price = @price
     where order_id = @order_id and product_id = @product_id
 end
-
+--
 -- select * from STOCK where product_id = 1
 -- insert into ORDER_ITEM values (5, 5, 1, 7, 0, 0)
 
@@ -90,7 +90,7 @@ as begin
     delete from Friend
         where ID1 = @id2 and ID2 = @id1
 end
-
+--
 -- select * from Friend
 --delete from Friend where ID1 = 1 and ID2 = 2
 
@@ -106,7 +106,7 @@ as begin
 
     insert into Friend values (@id2, @id1)
 end
-
+--
 insert into Friend values (1, 2)
 -------------------------------------------------------------------------------------------------------
 -- 6. TRIG_GRADUATION. Write a trigger that automatically deletes students when they graduate 
@@ -125,6 +125,7 @@ as begin
         delete from Highschooler where ID = @IdStudents
      end
 end
+--
 select * from Highschooler
 update Highschooler
 set Grade = 13
@@ -133,12 +134,76 @@ disable trigger TRIG_DELETE on Friend
 -------------------------------------------------------------------------------------------------------
 -- 7. TRIG_UPGRADE. Write a trigger so that when a student is moved up a grade, their friends will also be moved 
 -- (Upgrade the Coco, and Bertie, Rex, and Beatrix’s grades will be changed)
+create or alter trigger TRIG_UPGRADE
+on Highschooler
+after UPDATE
+as begin
+    declare @id int = (select Id from inserted)
+    declare @grade_old int = (select Grade from deleted)
+    declare @grade_new int = (select Grade from inserted)
+    
+    declare @id_amigo int 
+    
+    if @grade_new > @grade_old
+        begin
+            declare cursor_amigos cursor
+            for select ID2
+                from Friend
+                where ID1 = @id
+
+            open cursor_amigos 
+            fetch next from cursor_amigos into @id_amigo
+            while @@FETCH_STATUS = 0
+                begin
+                    update Highschooler
+                    set Grade = Grade + 1
+                    where ID = @id_amigo
+
+                    fetch next from cursor_amigos into @id_amigo
+                end 
+        
+            close cursor_amigos
+            deallocate cursor_amigos
+        end 
+
+end 
+--
+select * from Highschooler
+select * from Friend
+update Highschooler
+set Grade = Grade + 1
+where ID = 4
 
 -------------------------------------------------------------------------------------------------------
 -- 8. TRIG_NO_LONGER_FRIEND. Write a trigger to enforce the following behavior: If A liked B but is updated to 
 -- A liking C instead, and B and C were friends, make B and C no longer friends. Make sure the trigger only runs 
 -- when the "liked" (ID2) person is changed but the "liking" (ID1) person is not changed.
+create or alter trigger TRIG_NO_LONGER_FRIEND
+on Likes
+after UPDATE
+as begin
+    declare @id1_old int = (select ID1 from deleted)
+    declare @id2_old int = (select ID2 from deleted)
+    declare @id1_new int = (select ID1 from inserted)
+    declare @id2_new int = (select ID2 from inserted)
 
+    -- solo actua cuando cambia ID2 pero no ID1
+    if @id1_old = @id1_new and @id2_old <> @id2_new
+    begin
+        -- si el antiguo liked (B) y el nuevo liked (C) eran amigos
+        if exists (
+            select * from Friend
+            where (ID1 = @id2_old and ID2 = @id2_new)
+            or    (ID1 = @id2_new and ID2 = @id2_old)
+        )
+        begin
+            -- borrar la amistad en las dos direcciones
+            delete from Friend
+            where (ID1 = @id2_old and ID2 = @id2_new)
+            or    (ID1 = @id2_new and ID2 = @id2_old)
+        end
+    end
+end
 -- create database CHAMPIONSHIP -----------------------------------------------------------------------
 -- 9. TRIG_RANKING. Write a trigger that checks if the home team won and give 3 points to it and 0 to 
 --the away team, if the away team won, give 3 points to it and 0 to the home team and if the two teams 
@@ -169,7 +234,7 @@ as begin
         insert into STANDING values (@day, @away, 1)
     end
 end
-
+--
 insert into MATCH values (1, 'Madrid', 'Barça', 2, 0)
 insert into MATCH values (2, 'Valencia', 'Sevilla', 1, 1)
 insert into MATCH values (3, 'Betis', 'Atlético', 0, 1)
@@ -203,7 +268,7 @@ as begin
     when not matched then
         insert values (@dni, @month, @year, @cost);
 end
-
+--
 insert into PHONECALL values ('012.456.223-A', '20/02/2022', '20:25', '666999999', 120)
 
 -- select * from BILL
@@ -265,7 +330,7 @@ as begin
         where Team = @team2
     end
 end
-
+--
 insert into MATCH values (1, '01/01/2024', 'Valencia', 'Madrid', 3, 1, 'Pérez')
 select * from TEAM 
 
@@ -284,21 +349,70 @@ as begin
     set PlayedMatches = PlayedMatches + 1
     where PlayerID = @playerID
 end
-
+--
 insert into PLAYED values (1, 1, 'Libero', 5)
 select * from PLAYER 
 -- create database BLUEPLANET_TRADER -----------------------------------------------------------------------------------------------------
 -- 13.TRIG_UPDATE_ORDER_ORDERITEM. Write a trigger that updates the price of a product in the Orderitem 
 -- table and updates the total amount of the order in the order table. 
+create or alter trigger TRIG_UPDATE_ORDER_ORDERITEM
+on ORDERITEM
+after INSERT
+as begin
+    declare @IdProduct int = (select ProductId from inserted)
+    declare @IdOrder int = (select OrderId from inserted)
+    declare @quantity int = ( select Quantity from inserted)
+    declare @price money = (select UnitPrice from PRODUCT where Id = @IdProduct)
+   
+  
+    -- Actualizar UnitPrice en ORDERITEM con el precio real de PRODUCT
+    update ORDERITEM
+    set UnitPrice = @price
+    where ProductId = @IdProduct
+
+    --Actualizar TotalAmount en ORDERS sumando quantity * UnitPrice
+    update ORDERS
+    set TotalAmount = @quantity*@price
+    where Id = @IdOrder
+end
+--
+insert into ORDERS values ('01/01/2022',542400,1,0)
+insert into ORDERITEM values (23, 5, 0, 3)
+select * from ORDERITEM 
+select * from ORDERS 
+
 
 -- create database AMX -----------------------------------------------------------------------------------------------------
-
 -- 14.TRIG_INSERT_JOB_HISTORY. Write a trigger that inserts a new row in the job_history table when an employee changes his position. 
 -- For example, when the employee 177 changes his current position (SA_REP) to SA_MAN, there will be an insertion in job_history:
+create or alter trigger TRIG_INSERT_JOB_HISTORY
+on EMPLOYEES
+after UPDATE
+as begin
+    declare @employeeID bigint = (select employee_id from inserted)
+    declare @job_id_old varchar(10) = (select job_id from deleted)
+    declare @end_date date = Getdate()
+    declare @department_id bigint = (select department_id from deleted)
+    declare @start_date date = (select hire_date from deleted)
+
+    insert into job_history values (@employeeID, @start_date, @end_date, @job_id_old, @department_id)
+
+end
+select * from job_history
+select * from employees
+
+update employees
+set job_id = 'SA_MAN'
+where employee_id = 100
+-------------------------------------------------------------------------------------------------------
+-- 15.TRIG_INSERT_EMPLOYEE. Write a trigger that check if the salary is correct when a new employee is inserted. The employee and 
+-- the manager must belong to the same department.
+
+
 -------------------------------------------------------------------------------------------------------
 
--- 15.
--------------------------------------------------------------------------------------------------------
+-- 16. TRIG_UPDATE_SALARY. Write a trigger to check that the rise of the salaries will not be bigger than 20% and it will not allow 
+-- to change the salary.
 
 
 -- create database WEST_END_MUSIC -----------------------------------------------------------------------------------------------------
@@ -322,6 +436,22 @@ insert into Employee values ('García', 'Pepe', 'IT Staff', 6, '10/01/2000', GET
 select * from Employee
 
 -- create database SCHOLARSHIP -----------------------------------------------------------------------------------------------------
+-- 18. STUDENT_AVG_CREDITS. Write a query to display the students, their mark average and the total credits.
+
+-------------------------------------------------------------------------------------------------------
+-- 19. TRIG_CHECK_APPLICATION. Write a trigger that updates the APPLICATION table when there is an insertion on the APPLICATION table. 
+-- If the requirements are not accomplished, the application is automatically rejected; otherwise accepted. In both cases, the value of 
+-- the column StateApplication is changed (iniatially it was NULL), respectively with ‘rejected’ or ‘accepted’. The trigger inserts the 
+-- studentid, the average and the credits in the RANKING table and the rankstudent will be 0.
+
+-------------------------------------------------------------------------------------------------------
+-- 20. TRIG_UPDATE_RANKS. Write a trigger that update RANKING table. In case of being accepted, the student is automatically assigned a 
+-- position in the ranking, determined by the average of the grades; in case of equality of average, we consider first the greatest 
+-- number of credits achieved at the date of application and finally the insertion order of the applications.
+-------------------------------------------------------------------------------------------------------
+-- 21. TRIG_DROPOUT. Write a trigger that delete the application of a student when he/she renounces the scholarship.
+-------------------------------------------------------------------------------------------------------
+
 -- 22. TRIG_UPDATE_RANKS2. Write a trigger that update RANKING table. If a student renounces the scholarship (State is changed to 
 -- ‘dropout’), the ranking is updated.
 
@@ -376,14 +506,7 @@ select * from TEACHER_DEPARTMENT
 select * from MEMBER
 -- create database PMI_PROJECTS -----------------------------------------------------------------------------------------------------
 -- 28. TRIG_INSERT_EMPLOYEE_PROJECT. Write a trigger to check if the level of the employee is enough to work in the project.
-create or alter trigger TRIG_INSERT_EMPLOYEE_PROJECT
-on employee_project
-after insert
-as begin
-    declare @employeeid bigint=
-    declare @projectid
-    declare @levelemployee
-    declare @levelproject
+
 
 -------------------------------------------------------------------------------------------------------
 -- 29. TRIG_UPDATE_STATUS. Write a trigger to update status to ‘Entregado’ when Delivery_date is update 
