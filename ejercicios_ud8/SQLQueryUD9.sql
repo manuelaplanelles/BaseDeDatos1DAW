@@ -649,3 +649,162 @@ begin
         where IDVehicle = @idvehicle
     end
 end
+--1
+create or alter trigger TRIG_SALARY_RESTORER
+on RESTORATION_TASK
+after insert
+as
+begin
+    declare @idtask int=(select IDTask from inserted)
+    declare @idrestorer int=(select IDRestorer from inserted)
+    declare @projectid int=(select ArtworkID from inserted)
+    declare @cost decimal(10,2)=(select Cost from inserted)
+
+    -- Obtener el ProjectID a través de la obra de arte
+    declare @idproject int=(select ProjectID from ARTWORK 
+                           where ArtworkID=@projectid)
+
+    -- Actualizar o insertar en SALARY
+    if @idrestorer in (select IDRestorer from SALARY 
+                       where IDRestorer=@idrestorer and ProjectID=@idproject)
+    begin
+        update SALARY
+        set Salary=Salary+@cost
+        where IDRestorer=@idrestorer and ProjectID=@idproject
+    end
+    else
+    begin
+        insert into SALARY
+        values (@idrestorer, @idproject, @cost)
+    end
+
+    -- Actualizar Expenses del proyecto
+    update PROJECT
+    set Expenses=Expenses+@cost
+    where ProjectID=@idproject
+end
+--2
+create or alter trigger TRIG_DONATION
+on DONATION
+after insert
+as
+begin
+    declare @projectid int=(select ProjectID from inserted)
+    declare @amount decimal(10,2)=(select Amount from inserted)
+
+    update PROJECT
+    set TotalBudget=TotalBudget+@amount
+    where ProjectID=@projectid
+end
+
+--3 
+create or alter trigger TRIG_MATERIAL_USED
+on TASK_MATERIAL
+after insert
+as
+begin
+    declare @idtask int=(select IDTask from inserted)
+    declare @materialid int=(select MaterialID from inserted)
+    declare @quantityused int=(select QuantityUsed from inserted)
+    declare @dateused date=(select DateUsed from inserted)
+
+    declare @priceunit decimal(10,2)=(select PriceUnit from MATERIAL 
+                                      where MaterialID=@materialid)
+    declare @totalcost decimal(10,2)=@quantityused*@priceunit
+
+    -- Obtener el proyecto a través de la tarea
+    declare @artworkid int=(select ArtworkID from RESTORATION_TASK 
+                            where IDTask=@idtask)
+    declare @idproject int=(select ProjectID from ARTWORK 
+                            where ArtworkID=@artworkid)
+    declare @idrestorer int=(select IDRestorer from RESTORATION_TASK 
+                             where IDTask=@idtask)
+
+    -- Descontar el coste del material del salario del restaurador
+    update SALARY
+    set Salary=Salary-@totalcost
+    where IDRestorer=@idrestorer and ProjectID=@idproject
+
+    -- Actualizar stock del material
+    declare @newstock int
+    update MATERIAL
+    set Units=Units-@quantityused
+    where MaterialID=@materialid
+
+    set @newstock=(select Units from MATERIAL where MaterialID=@materialid)
+
+    -- Si el stock queda <= 3, Flag = true
+    if @newstock<=3
+    begin
+        update MATERIAL
+        set Flag=1
+        where MaterialID=@materialid
+    end
+end
+--4
+create or alter trigger TRIG_UPDATE_STOCK
+on ORDER_DETAILS
+after insert
+as
+begin
+    declare @materialid int=(select MaterialID from inserted)
+    declare @quantity int=(select Quantity from inserted)
+
+    -- Actualizar stock
+    update MATERIAL
+    set Units=Units+@quantity
+    where MaterialID=@materialid
+
+    -- Si el nuevo stock es > 3, Flag = false
+    declare @newstock int=(select Units from MATERIAL 
+                           where MaterialID=@materialid)
+
+    if @newstock>3
+    begin
+        update MATERIAL
+        set Flag=0
+        where MaterialID=@materialid
+    end
+end
+
+--5
+create or alter trigger TRIG_UPDATE_POINTS
+on PROJECT
+after update
+as
+begin
+    declare @projectid int=(select ProjectID from inserted)
+    declare @enddatereal date=(select EndDateReal from inserted)
+    declare @enddate date=(select EndDate from inserted)
+    declare @expenses decimal(10,2)=(select Expenses from inserted)
+    declare @totalbudget decimal(10,2)=(select TotalBudget from inserted)
+
+    if @enddatereal is not null  -- se ha actualizado EndDateReal
+    begin
+        -- Puntos por fecha: 10 si a tiempo, 3 si tarde
+        if @enddatereal<=@enddate
+        begin
+            update DONOR
+            set Points=Points+10
+            where DonorID in (select DonorID from DONATION 
+                              where ProjectID=@projectid)
+        end
+        else
+        begin
+            update DONOR
+            set Points=Points+3
+            where DonorID in (select DonorID from DONATION 
+                              where ProjectID=@projectid)
+        end
+
+        -- 4 puntos extra si Expenses <= TotalBudget
+        if @expenses<=@totalbudget
+        begin
+            update DONOR
+            set Points=Points+4
+            where DonorID in (select DonorID from DONATION 
+                              where ProjectID=@projectid)
+        end
+    end
+end
+
